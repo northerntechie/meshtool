@@ -298,8 +298,24 @@ namespace twg {
   
 }
 
-int main()
+int main(int argc, char** argv)
 {
+  std::string filename;
+  if(argc<3)
+    {
+      std::cout << "Usage: meshtool -f <mesh>.obj\n";
+      exit(1);
+    }
+  else
+    {
+      std::string token{argv[1]};
+      if(token == "-f")
+	{
+	  filename = std::string{argv[2]};
+	  std::cout << "Opening file: " << filename << "\n";
+	}
+    }
+  
   twg::meshtool mt;
   mt.init("meshtool converter and viewer",
 	  25,

@@ -1,0 +1,6 @@
+rm CMakeCache.txt
+rm -r CMakeFiles
+rm *~
+rm src/*~
+rm src/include/*~
+rm src/include/meshtool/*~
