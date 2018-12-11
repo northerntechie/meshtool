@@ -1,0 +1,12 @@
+CMakeFiles/*
+docs/*
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+.DS_Store
+src/CMakeFiles/*
+build/*
+*~
+*/*~
+*/*/*~
+meshtool
