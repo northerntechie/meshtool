@@ -104,7 +104,8 @@ namespace twg {
   static mesh loadObject(const std::string &filename) {
     std::ifstream in{filename, ios::in};
     if (!in) {
-      std::cerr << "Not able to open: " << filename << "\n";
+      LOG("[Error] Not able to open: ");
+      LOG(filename); LOG("\n");
       exit(1);
     }
 
@@ -137,7 +138,7 @@ namespace twg {
 	elements.push_back(--b);
 	elements.push_back(--c);
       } else if (line[0] == '#') {
-	std::cout << "OBJ FILE COMMENT: " << line.substr(1) << "\n";
+	std::cout << "[Ok] OBJ FILE COMMENT: " << line.substr(1) << "\n";
       }
     }
 
@@ -160,12 +161,84 @@ namespace twg {
   }
   
 
-  meshtool::meshtool(mesh *m_mesh) { this->m_mesh = m_mesh; }
-
+  meshtool::meshtool(mesh *m_mesh)
+    : ft{}, face{}
+  {
+    this->m_mesh = m_mesh;
+    if(FT_Init_FreeType(&ft))
+      {
+	LOG("[ERROR] Freetype: could not initialize Freetype library!\n");
+      }
+    else
+      {
+	LOG("[Ok] Loaded Freetype.\n");
+      }
+    if(FT_New_Face(ft, "fonts/LiberationMono-Regular.ttf", 0, &face))
+      {
+	LOG("[ERROR] Freetype: failed to load fonst/terminess.ttf!\n");
+      }
+    else
+      {
+	LOG("[Ok] Loaded Hack-Regular.ttf\n");
+      }
+    FT_Set_Pixel_Sizes(face,0,48);
+    initCharacterMap();
+  }
+  
   meshtool::~meshtool() {}
 
   GLfloat meshtool::idMat[16] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 				 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+
+  void meshtool::initCharacterMap()
+  {
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    for(GLubyte c=32; c < 127; ++c)
+      {
+	 if(FT_Error err = FT_Load_Char(face,c,FT_LOAD_RENDER))
+	   {
+	     LOG("Failed to load character ");
+	     LOG(c);
+	     LOG(", error code= ");
+	     LOG(err);
+	     LOG("\n");
+	     continue;
+	   }
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexImage2D
+	  (GL_TEXTURE_2D,
+	   0,
+	   GL_RED,
+	   face->glyph->bitmap.width,
+	   face->glyph->bitmap.rows,
+	   0,
+	   GL_RED,
+	   GL_UNSIGNED_BYTE,
+	   face->glyph->bitmap.buffer);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+			GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+			GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+			GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+			GL_LINEAR);
+	Character character = {
+	  texture,
+	  glm::ivec2(face->glyph->bitmap.width,
+		     face->glyph->bitmap.rows),
+	  glm::ivec2(face->glyph->bitmap_left,
+		     face->glyph->bitmap_top),
+	  static_cast<GLuint>(face->glyph->advance.x)
+	};
+	characters.insert(std::pair<GLchar,Character>
+			  (c, character));	     
+      }
+    FT_Done_Face(face);
+    FT_Done_FreeType(ft);
+  }
 
   int meshtool::init(std::string &&title, int xpos, int ypos, int width,
 		     int height, int flags) {
@@ -173,18 +246,18 @@ namespace twg {
     screen_height = height;
     _isRunning = true;
     if (SDL_Init(SDL_INIT_EVERYTHING) == 0) {
-      std::cout << "SDL init a success...\n";
+      LOG("[Ok] SDL init a success...\n");
       _window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED,
 				 SDL_WINDOWPOS_CENTERED, width, height, flags);
       if (_window != 0) {
 	_renderer = SDL_CreateRenderer(_window, -1, 0);
       } else {
-	std::cout << "SDL_CreateRenderer failed!\n";
+	LOG("[Error] SDL_CreateRenderer failed!\n");
 	return 3;
       }
 
     } else {
-      std::cout << "SDL init failed!...\n";
+      LOG("SDL init failed!...\n");
       return 3;
     }
 
@@ -193,24 +266,29 @@ namespace twg {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-    std::cout << "GL_VERSION= " << glGetString(GL_VERSION) << "\n";
-    std::cout << "GL_VENDOR= " << glGetString(GL_VENDOR) << "\n";
-    std::cout << "GL_SHADING_LANGUAGE_VERSION= "
-	      << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
+    LOG("[Ok] GL_VERSION= ");
+    LOG(glGetString(GL_VERSION)); LOG("\n");
+    LOG("[Ok] GL_VENDOR= ");
+    LOG(glGetString(GL_VENDOR)); LOG("\n");
+    LOG("[Ok] GL_SHADING_LANGUAGE_VERSION= ");
+    LOG(glGetString(GL_SHADING_LANGUAGE_VERSION));
+    LOG("\n");
     GLuint vs, fs;
 
     _context = SDL_GL_CreateContext(_window);
     if (&_context == 0) {
-      std::cout << "SDL_GL_CreateContext failed!\n";
+      LOG("[Error] SDL_GL_CreateContext failed!\n");
       return 2;
     }
 
     glViewport(0, 0, width, height);
-    std::cout << "Set viewport = (0,0," << width << "," << height << ")\n";
-    _program = Program{"shaders/basic.vs",
+    LOG("Set viewport = (0,0,");
+    LOG(width); LOG(",");
+    LOG(height); LOG(")\n");
+    modelProgram = Program{"shaders/basic.vs",
                        "shaders/basic.fs"};
     
-    glUseProgram(_program.programID);
+    glUseProgram(modelProgram.ID);
 
     glDisable(GL_DEPTH_TEST);
     glViewport(0, 0, width, height);
@@ -224,10 +302,12 @@ namespace twg {
     glBufferData(GL_ARRAY_BUFFER, m_mesh->size(), &m_mesh->vertices[0],
 		 GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+			  sizeof(Vertex),
 			  reinterpret_cast<void *>(offsetof(Vertex, point)));
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
+			  sizeof(Vertex),
 			  reinterpret_cast<void *>(offsetof(Vertex, normal)));
     glEnableVertexAttribArray(1);
 
@@ -248,15 +328,15 @@ namespace twg {
     glClearColor(0.15, 0.22, 0.15, 0.0);
     glEnable(GL_DEPTH_TEST);
 
-    glUseProgram(_program.programID);
+    glUseProgram(modelProgram.ID);
     glBindVertexArray(vao);
-    GLint mM = glGetUniformLocation(_program.programID, "mM");
+    GLint mM = glGetUniformLocation(modelProgram.ID, "mM");
     angleY += 0.05;
     angleY = std::fmod(angleY, 2 * M_PI);
     angleX += 0.03233;
     angleX = std::fmod(angleX, 2 * M_PI);
 
-    glm::mat4 modelMat = glm::scale(glm::mat4(1.0), glm::vec3(0.3f, 0.3f, 0.3f));
+    glm::mat4 modelMat = glm::scale(glm::mat4(1.0), glm::vec3(scale));
     modelMat = glm::rotate(modelMat, angleY, glm::vec3(0.0f, 1.0f, 0.0f));
     modelMat = glm::rotate(modelMat, angleX, glm::vec3(1.0f, 0.0f, 0.0f));
     modelMat = glm::rotate(modelMat, angleZ, glm::vec3(0.0,0.0,1.0));
@@ -297,12 +377,21 @@ namespace twg {
 	  _isRunning = false;
 	  break;
 	case SDLK_LEFT:
-	  std::cout << "Rotating left...\n";
+	  LOG("[Ok] Rotating left...\n");
 	  angleZ += 0.5f;
 	  break;
 	case SDLK_RIGHT:
-	  std::cout << "Rotating right...\n";
+	  LOG("[Ok] Rotating right...\n");
 	  angleZ += 0.5f;
+	  break;
+	case 'w':
+	  LOG("[Ok] Scaling up 110%...\n");
+	  scale += 0.1f;
+	  break;
+	case 's':
+	  LOG("[Ok] Scaling down 90%...\n");
+	  scale -= 0.1f;
+	  if(scale < 0.1f) scale = 0.1f;
 	  break;
 	default:
 	  break;
@@ -315,14 +404,14 @@ namespace twg {
   }
 
   void meshtool::clean() {
-    std::cout << "Exiting and cleanup of utility...\n";
+    LOG("[Ok] Exiting and cleanup of utility...\n");
     glDeleteBuffers(1, &vbo);
-    glDeleteProgram(_program);
+    glDeleteProgram(modelProgram.ID);
     SDL_GL_DeleteContext(_context);
     SDL_DestroyWindow(_window);
     SDL_DestroyRenderer(_renderer);
     SDL_Quit();
-    std::cout << "Everything cleaned and destroyed...\n";
+    LOG("Everything cleaned and destroyed...\n");
   }
 }
 
@@ -330,13 +419,14 @@ int main(int argc, char **argv) {
   std::string filename;
 
   if (argc < 3) {
-    std::coust << "Usage: meshtool -f <mesh>.obj\n";
+    std::cout << "Usage: meshtool -f <mesh>.obj\n";
     exit(1);
   } else {
     std::string token{argv[1]};
     if (token == "-f") {
       filename = std::string{argv[2]};
-      std::cout << "Opening file: " << filename << "\n";
+      LOG("[Ok] Opening file: ");
+      LOG(filename); LOG("\n");
       twg::mesh m_mesh = twg::loadObject(filename);
       twg::meshtool mt{&m_mesh};
       mt.init("meshtool converter and viewer", 25, 25, 800, 600,

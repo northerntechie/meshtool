@@ -24,9 +24,12 @@ message("CMAKE_SYSTEM_NAME= " ${CMAKE_SYSTEM_NAME})
 # Find Packages
 find_package(SDL2 REQUIRED)
 find_package(GLEW REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIR} /home/todds/work/Developer/games/meshtool/src/include/meshtool/glm/glm )
+find_package(Freetype REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIR} /home/todds/work/Developer/games/meshtool/src/include/meshtool/glm/glm ${FREETYPE_INCLUDE_DIRS})
 message("GLEW_INCLUDE_DIR= " ${GLEW_INCLUDE_DIR})
 message("GLEW_LIBRARIES= " ${GLEW_LIBRARIES})
+message("FREETYPE_INCLUDE_DIRS= " ${FREETYPE_INCLUDE_DIRS})
+message("FREETYPE_LIBRARIES= " ${FREETYPE_LIBRARIES})
 
 # Source file lists
 set(MAIN_SOURCE src/all.cpp) #Unitybuild
@@ -36,7 +39,7 @@ set(MAIN_SOURCE src/all.cpp) #Unitybuild
 # Main Executable Section
 add_executable(meshtool ${MAIN_SOURCE})
 target_include_directories(meshtool PUBLIC src src/include/meshtool)
-target_link_libraries(meshtool ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} /usr/lib/x86_64-linux-gnu/mesa/libGL.so )
+target_link_libraries(meshtool ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} /usr/lib/x86_64-linux-gnu/mesa/libGL.so ${FREETYPE_LIBRARIES})
 
 # Utilities Executable Section
 
