@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 # Set Version Number
 set(meshtool_VERSION_MAJOR 0)
 set(meshtool_VERSION_MINOR 1)
-set(CMAKE_CC_COMPILER /usr/bin/clang)
+set(CMAKE_CC_COMPILER /usr/bin/g++)
 set(CMAKE_CXX_COMPILER $ENV{CXX})
 
 project (VoxelArt)
@@ -39,7 +39,7 @@ set(MAIN_SOURCE src/all.cpp) #Unitybuild
 # Main Executable Section
 add_executable(meshtool ${MAIN_SOURCE})
 target_include_directories(meshtool PUBLIC src src/include/meshtool)
-target_link_libraries(meshtool ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} /usr/lib/x86_64-linux-gnu/mesa/libGL.so ${FREETYPE_LIBRARIES})
+target_link_libraries(meshtool ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} /usr/lib/x86_64-linux-gnu/libGL.so ${FREETYPE_LIBRARIES})
 
 # Utilities Executable Section
 
